@@ -1,5 +1,6 @@
 #include "MidiFile.h"
 #include "pxtone/pxtnService.h"
+#include <cmath>
 #include <iostream>
 #include <queue>
 
@@ -10,6 +11,11 @@ struct Note {
 struct PitchEvent {
   int pitch, time;
 };
+
+void print_event(const EVERECORD *p) {
+  std::cout << (int)p->unit_no << "\t" << (int)p->kind << "\t" << p->clock
+            << "\t" << p->value << std::endl;
+}
 
 int main(int argc, char **args) {
   // read file
@@ -38,6 +44,9 @@ int main(int argc, char **args) {
   for (int i = 0; i < pxtn.Unit_Num(); ++i) {
     const pxtnUnit &unit = *pxtn.Unit_Get(i);
     midifile.addTrackName(i + 1, 0, unit.get_name_buf(nullptr));
+    // configure cc6 to set pitch bend range
+    midifile.addController(i + 1, 0, i + 1, 100, 0);
+    midifile.addController(i + 1, 0, i + 1, 101, 0);
     // 104 = default volume
     midifile.addController(i + 1, 0, i + 1, 11, 104);
   }
@@ -60,7 +69,7 @@ int main(int argc, char **args) {
         if (channel == 9) ++channel; // to avoid drums
         switch (p->kind) {
         case EVENTKIND_ON: {
-          int key = notes[p->unit_no].key / 256 - 39;
+          int key = notes[p->unit_no].key / 256 - 27;
           int vel = notes[p->unit_no].vel;
           midifile.addNoteOn(track, p->clock, channel, key, vel);
           midifile.addNoteOff(track, p->clock + p->value, channel, key);
@@ -78,11 +87,18 @@ int main(int argc, char **args) {
           midifile.addController(track, p->clock, channel, 10, p->value);
           break;
 
-        case EVENTKIND_TUNING:
+        case EVENTKIND_TUNING: {
           // TODO: extend this once you do portamentos
-          // 1 = Modulation MSB, 33 = Modulation LSB, 6 = Pitch bend range
-          midifile.addController(track, p->clock, channel, 1, p->value);
+          // 6 = Pitch bend range
+          float value = reinterpret_cast<const float &>(p->value);
+          double note_offset = std::log2(value) * 12;
+          int pitch_bend_range =
+              std::max<int>(1, std::ceil(std::abs(note_offset)));
+          double abs_offset = note_offset / pitch_bend_range;
+          midifile.addController(track, p->clock, channel, 6, pitch_bend_range);
+          midifile.addPitchBend(track, p->clock, channel, abs_offset);
           break;
+        }
 
         default:
           break;
@@ -100,10 +116,6 @@ int main(int argc, char **args) {
     default:
       records.push(p);
     }
-    if (p->kind == EVENTKIND_VELOCITY)
-      notes[p->unit_no].vel = p->value;
-    else
-      records.push(p);
   }
 
   midifile.sortTracks();

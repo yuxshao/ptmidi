@@ -206,38 +206,38 @@ int main(int argc, char **args) {
     }
 
     case EVENTKIND_KEY:
-      units[p->unit_no].notes.emplace(p->clock, p->value / 256 - 27);
+      units[p->unit_no].notes[p->clock] = p->value / 256 - 27;
       break;
 
     case EVENTKIND_TUNING: {
       auto &hist = units[p->unit_no].tunings;
       float value = reinterpret_cast<const float &>(p->value);
-      hist.emplace(p->clock, std::log2(value) * 12);
+      units[p->unit_no].tunings[p->clock] = std::log2(value) * 12;
       break;
     }
 
     case EVENTKIND_PORTAMENT:
-      units[p->unit_no].portas.emplace(p->clock, p->value);
+      units[p->unit_no].portas[p->clock] = p->value;
       break;
 
     case EVENTKIND_VOLUME:
-      units[p->unit_no].volume.emplace(p->clock, p->value);
+      units[p->unit_no].volume[p->clock] = p->value;
       break;
 
     case EVENTKIND_PAN_VOLUME:
-      units[p->unit_no].pan_v.emplace(p->clock, p->value);
+      units[p->unit_no].pan_v[p->clock] = p->value;
       break;
 
     case EVENTKIND_PAN_TIME:
-      units[p->unit_no].pan_t.emplace(p->clock, p->value);
+      units[p->unit_no].pan_t[p->clock] = p->value;
       break;
 
     case EVENTKIND_VOICENO:
-      units[p->unit_no].voice.emplace(p->clock, p->value);
+      units[p->unit_no].voice[p->clock] = p->value;
       break;
 
     case EVENTKIND_GROUPNO:
-      units[p->unit_no].group.emplace(p->clock, p->value);
+      units[p->unit_no].group[p->clock] = p->value;
       break;
 
     default:
@@ -265,9 +265,6 @@ int main(int argc, char **args) {
     // configure cc6 to set pitch bend range
     midifile.addController(track, 0, channel, 100, 0);
     midifile.addController(track, 0, channel, 101, 0);
-    // TODO: get rid of
-    midifile.addController(track, 0, channel, 11, 104); // 104 = default volume
-    midifile.addPitchBend(track, 0, channel, 0);
 
     // All these pxtone parameters go from 0 to *128*, so we need to cap at 127
     for (const auto & [ time, volume ] : units[i].volume)

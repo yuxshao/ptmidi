@@ -10,10 +10,10 @@ struct PitchEvent {
 
 template <typename T> using Historical = std::map<int, T>;
 
-template <typename T> T at_time(const Historical<T> &hist, int time, T def) {
+template <typename T> T at_time(const Historical<T> &hist, int time) {
   auto it = hist.upper_bound(time);
   if (it == hist.begin())
-    return def;
+    throw std::domain_error("no value at this time");
   else
     return (--it)->second;
 }
@@ -49,6 +49,17 @@ struct Unit {
 
   // other quantities that easily map to MIDI
   Historical<int> volume, voice, group, pan_v, pan_t;
+
+  Unit() {
+    notes[0] = 48;
+    portas[0] = 0;
+    tunings[0] = 1;
+    volume[0] = 104;
+    voice[0] = 0;
+    group[0] = 0;
+    pan_v[0] = 64;
+    pan_t[0] = 64;
+  }
 
   Historical<double> pitch_offsets() {
     // Changing portamento times within a note is complicated. From what I
@@ -86,14 +97,15 @@ struct Unit {
     // To avoid all of this likely undesired behaviour, write ptcop files with
     // (possibly empty) note changes at each portamento time change.
     Historical<double> offsets;
+    offsets[0] = 0;
     for (const auto & [ press_time, press ] : presses) {
-      if (at_time(offsets, press_time, 0.) != 0) offsets[press_time] = 0;
-      int base_key = at_time(notes, press_time, 48);
+      if (at_time(offsets, press_time) != 0) offsets[press_time] = 0;
+      int base_key = at_time(notes, press_time);
       auto key_bound = notes.lower_bound(press_time + press.length);
       auto key_it = notes.upper_bound(press_time);
       while (key_it != key_bound) {
         const auto & [ key_time, key ] = *key_it;
-        double curr_off = at_time(offsets, key_time, 0.);
+        double curr_off = at_time(offsets, key_time);
         double dest_off = key - base_key;
 
         ++key_it;
@@ -147,7 +159,7 @@ struct Unit {
     auto tuning_it = tunings.begin();
     while (tuning_it != tunings.end()) {
       const auto & [ tune_time, tuning ] = *tuning_it;
-      double current_offset = at_time(offsets, tune_time, 0.);
+      double current_offset = at_time(offsets, tune_time);
       ++tuning_it;
 
       auto offset_it = offsets.emplace(tune_time, current_offset).first;

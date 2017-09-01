@@ -1,12 +1,9 @@
 #include "MidiFile.h"
 #include "pxtone/pxtnService.h"
+#include <cctype>
 #include <cmath>
 #include <iostream>
 #include <map>
-
-struct PitchEvent {
-  int pitch, clock, end_clock;
-};
 
 template <typename T> using Historical = std::map<int, T>;
 
@@ -18,16 +15,16 @@ template <typename T> T at_time(const Historical<T> &hist, int time) {
     return (--it)->second;
 }
 
-struct Press {
-  int vel, length;
-};
-
 template <typename T>
 std::ostream &operator<<(std::ostream &o, const Historical<T> &hist) {
   for (const auto & [ time, value ] : hist)
     o << time << ":\t" << value << std::endl;
   return o;
 }
+
+struct Press {
+  int vel, length;
+};
 
 std::ostream &operator<<(std::ostream &o, const Press &p) {
   return o << "(" << p.vel << ", " << p.length << ")";

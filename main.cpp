@@ -253,20 +253,22 @@ int main(int argc, char **args) {
     // configure cc6 to set pitch bend range
     midifile.addController(track, 0, channel, 100, 0);
     midifile.addController(track, 0, channel, 101, 0);
-    // 104 = default volume
-    midifile.addController(track, 0, channel, 11, 104);
+    // TODO: get rid of
+    midifile.addController(track, 0, channel, 11, 104); // 104 = default volume
     midifile.addPitchBend(track, 0, channel, 0);
 
+    // All these pxtone parameters go from 0 to *128*, so we need to cap at 127
     for (const auto & [ time, volume ] : units[i].volume)
-      midifile.addController(track, time, channel, 11, volume);
+      midifile.addController(track, time, channel, 11, std::min(volume, 127));
 
     for (const auto & [ time, pan_v ] : units[i].pan_v)
-      midifile.addController(track, time, channel, 10, pan_v);
+      midifile.addController(track, time, channel, 10, std::min(pan_v, 127));
+
+    // note to self: when doing pan_t, also cap at 127
 
     for (const auto & [ time, press ] : units[i].presses) {
-      // 48 is a default
-      int key = at_time(units[i].notes, time, 48);
-      midifile.addNoteOn(track, time, channel, key, press.vel);
+      int key = at_time(units[i].notes, time);
+      midifile.addNoteOn(track, time, channel, key, std::min(press.vel, 127));
       midifile.addNoteOff(track, time + press.length, channel, key);
     }
 

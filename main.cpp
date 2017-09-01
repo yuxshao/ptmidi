@@ -192,6 +192,7 @@ int main(int argc, char **args) {
   // Build units data
   std::vector<Unit> units(pxtn.Unit_Num());
   for (const EVERECORD *p = pxtn.evels->get_Records(); p; p = p->next) {
+    if (p->clock >= pxtn.master->get_last_clock()) continue;
     switch (p->kind) {
     case EVENTKIND_ON: {
       auto &hist = units[p->unit_no].presses;

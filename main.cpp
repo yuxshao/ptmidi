@@ -33,6 +33,11 @@ std::ostream &operator<<(std::ostream &o, const Press &p) {
   return o << "(" << p.vel << ", " << p.length << ")";
 }
 
+std::ostream &operator<<(std::ostream &o, const EVERECORD &p) {
+  return o << (int)p.unit_no << "\t" << (int)p.kind << "\t" << p.clock << "\t"
+           << p.value;
+}
+
 double lerp(double a, double b, int num, int denom) {
   return (a * (denom - num) + b * num) / denom;
 }
@@ -157,11 +162,6 @@ struct Unit {
   }
 };
 
-void print_event(const EVERECORD *p) {
-  std::cerr << (int)p->unit_no << "\t" << (int)p->kind << "\t" << p->clock
-            << "\t" << p->value << std::endl;
-}
-
 int main(int argc, char **args) {
   // read file
   if (argc != 2) {
@@ -177,7 +177,7 @@ int main(int argc, char **args) {
   pxtn.read(&desc);
   fclose(file);
 
-  int last_clock = -1;
+  // Build units data
   std::vector<Unit> units(pxtn.Unit_Num());
   for (const EVERECORD *p = pxtn.evels->get_Records(); p; p = p->next) {
     switch (p->kind) {
@@ -229,8 +229,7 @@ int main(int argc, char **args) {
       break;
 
     default:
-      std::cerr << "warning: unhandled event - ";
-      print_event(p);
+      std::cerr << "warning: unhandled event - " << *p << std::endl;
       break;
     }
   }

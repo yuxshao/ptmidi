@@ -39,6 +39,11 @@ double lerp(double a, double b, int num, int denom) {
   return (a * (denom - num) + b * num) / denom;
 }
 
+struct Woice {
+  bool drum;
+  int num;
+};
+
 struct Unit {
   Historical<Press> presses;
   Historical<int> notes, portas;
@@ -186,6 +191,26 @@ int main(int argc, char **args) {
   pxtn.read(&desc);
   fclose(file);
 
+  // Get woice MIDI correspondence
+  std::vector<Woice> woices(pxtn.Woice_Num());
+  for (int i = 0; i < pxtn.Woice_Num(); ++i) {
+    const pxtnWoice *woice = pxtn.Woice_Get(i);
+    woices[i] = {0};
+    if (woice->is_name_buf()) {
+      string name(woice->get_name_buf(nullptr));
+      // some naive string parsing to match (D|M)[0-9]+.*
+      if (name.length() >= 2 && (name[0] == 'D' || name[0] == 'M')) {
+        if (isdigit(name[1])) {
+          int num = std::stoi(name.substr(1));
+          if (num >= 0 && num < 128) {
+            woices[i].num = num;
+            woices[i].drum = (name[0] == 'D');
+          }
+        }
+      }
+    }
+  }
+
   // Build units data
   std::vector<Unit> units(pxtn.Unit_Num());
   for (const EVERECORD *p = pxtn.evels->get_Records(); p; p = p->next) {
@@ -274,6 +299,14 @@ int main(int argc, char **args) {
       midifile.addController(track, time, channel, 10, std::min(pan_v, 127));
 
     // note to self: when doing pan_t, also cap at 127
+
+    for (const auto & [ time, voice ] : units[i].voice) {
+      const Woice &woice = woices[voice];
+      if (woice.drum)
+        std::cerr << "drums not supported yet";
+      else
+        midifile.addPatchChange(track, time, channel, woice.num);
+    }
 
     for (const auto & [ time, press ] : units[i].presses) {
       int key = at_time(units[i].notes, time);

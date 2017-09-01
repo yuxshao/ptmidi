@@ -3,3 +3,4 @@ main: *.cpp
 
 clean:
 	rm -f main
+	rm -f vgcore.*

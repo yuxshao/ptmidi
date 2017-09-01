@@ -10,15 +10,6 @@ struct PitchEvent {
 
 template <typename T> using Historical = std::map<int, T>;
 
-template <typename T>
-T just_before_time(const Historical<T> &hist, int time, T def) {
-  auto it = hist.lower_bound(time);
-  if (it == hist.begin())
-    return def;
-  else
-    return (--it)->second;
-}
-
 template <typename T> T at_time(const Historical<T> &hist, int time, T def) {
   auto it = hist.upper_bound(time);
   if (it == hist.begin())
@@ -42,8 +33,8 @@ std::ostream &operator<<(std::ostream &o, const Press &p) {
   return o << "(" << p.vel << ", " << p.length << ")";
 }
 
-double lerp(int a, int b, int num, int denom) {
-  return (a * (denom - num) + b * num) / double(denom);
+double lerp(double a, double b, int num, int denom) {
+  return (a * (denom - num) + b * num) / denom;
 }
 
 struct Unit {
@@ -137,8 +128,8 @@ struct Unit {
         }
 
         // porta_it is the first portamento that finished. if it's porta_bound,
-        // no portamento finished. calculate and the correct pitch offset for
-        // the end of this note.
+        // no portamento finished, in which case we calculate and the correct
+        // pitch offset for the end of this note.
         if (porta_it == porta_bound && porta_it != portas.begin()) {
           int porta = (--porta_bound)->second;
           // porta is nonzero, or else it would've finished before the note end.

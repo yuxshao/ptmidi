@@ -50,7 +50,7 @@ struct Unit {
   Unit() {
     notes[0] = 48;
     portas[0] = 0;
-    tunings[0] = 1;
+    tunings[0] = 0;
     volume[0] = 104;
     voice[0] = 0;
     group[0] = 0;
@@ -189,7 +189,9 @@ int main(int argc, char **args) {
   // Build units data
   std::vector<Unit> units(pxtn.Unit_Num());
   for (const EVERECORD *p = pxtn.evels->get_Records(); p; p = p->next) {
-    if (p->clock >= pxtn.master->get_last_clock()) continue;
+    if (p->clock >= pxtn.master->get_last_clock() &&
+        pxtn.master->get_last_clock() > 0)
+      continue;
     switch (p->kind) {
     case EVENTKIND_ON: {
       auto &hist = units[p->unit_no].presses;

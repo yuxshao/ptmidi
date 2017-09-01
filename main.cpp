@@ -1,181 +1,17 @@
-#include "MidiFile.h"
-#include "pxtone/pxtnService.h"
 #include <cctype>
 #include <cmath>
 #include <iostream>
-#include <map>
 
-template <typename T> using Historical = std::map<int, T>;
-
-template <typename T> T at_time(const Historical<T> &hist, int time) {
-  auto it = hist.upper_bound(time);
-  if (it == hist.begin())
-    throw std::domain_error("no value at this time");
-  else
-    return (--it)->second;
-}
-
-template <typename T>
-std::ostream &operator<<(std::ostream &o, const Historical<T> &hist) {
-  for (const auto & [ time, value ] : hist)
-    o << time << ":\t" << value << std::endl;
-  return o;
-}
-
-struct Press {
-  int vel, length;
-};
-
-std::ostream &operator<<(std::ostream &o, const Press &p) {
-  return o << "(" << p.vel << ", " << p.length << ")";
-}
+#include "MidiFile.h"
+#include "pttypes.hpp"
+#include "historical.hpp"
+#include "pitch_bend.hpp"
+#include "pxtone/pxtnService.h"
 
 std::ostream &operator<<(std::ostream &o, const EVERECORD &p) {
-  return o << (int)p.unit_no << "\t" << (int)p.kind << "\t" << p.clock << "\t"
+  return o << (int)p.unit_no << " " << (int)p.kind << "\t" << p.clock << "\t"
            << p.value;
 }
-
-double lerp(double a, double b, int num, int denom) {
-  return (a * (denom - num) + b * num) / denom;
-}
-
-struct Woice {
-  Woice() : drum(false), num(0) {}
-  bool drum;
-  int num;
-};
-
-struct Unit {
-  Historical<Press> presses;
-  Historical<int> notes, portas;
-  Historical<double> tunings;
-
-  // other quantities that easily map to MIDI
-  Historical<int> volume, voice, group, pan_v, pan_t;
-
-  Unit() {
-    notes[0] = 48;
-    portas[0] = 0;
-    tunings[0] = 0;
-    volume[0] = 104;
-    voice[0] = 0;
-    group[0] = 0;
-    pan_v[0] = 64;
-    pan_t[0] = 64;
-  }
-
-  Historical<double> pitch_offsets() {
-    // Changing portamento times within a note is complicated. From what I
-    // gather looking at the source code (pxtnUnit::Tone_Increment_Key) and
-    // experiments, what happens at a mid-note portamento change is:
-    //
-    // 1) If there was previously a [non-zero] portamento time, and the
-    // portamento finished, this portamento time change, and all future changes
-    // for this note, do nothing (as expected).
-    //
-    // 2) Otherwise, there was a [non-zero] portamento time just before the note
-    // started, but the portamento didn't finish [OR the previous portamento
-    // time was 0]. (In addition, condition 1 was never fulfilled by any
-    // previous portamento -- i.e., no previous portamento slide finished). Then
-    // then note plays afterwards as if the new portamento time covered the
-    // whole note.
-    //
-    // For example, consider 2 whole notes were together in sequence, the second
-    // a 4 semitones lower, and say portamento time was originally 4 beats, and
-    // a beat into the second whole note, portamento time changed to 2 beats.
-    // The first quarter note would smoothly move to 1 semitone below the first
-    // whole note, but then jump to 2 semitones below, then smoothly move to 4
-    // semitones below for the second whole note.
-    //
-    // I don't think the 2nd case behaviour is intended. Or if it is, it
-    // shouldn't depend on whether or not the previous portamento time was 0 or
-    // not (why should there be a jump if there was 0-time portamento vs. if
-    // there was a 0.00001-time portamento?).
-    //
-    // I'm emulating the 2 points described above, but getting rid of the
-    // distinction between non-zero and zero portamento time (i.e., what was
-    // said but with everything in []s removed). This is mostly faithful to the
-    // original but with the case most likely to be an error gone.
-    //
-    // To avoid all of this likely undesired behaviour, write ptcop files with
-    // (possibly empty) note changes at each portamento time change.
-    Historical<double> offsets;
-    offsets[0] = 0;
-    for (const auto & [ press_time, press ] : presses) {
-      if (at_time(offsets, press_time) != 0) offsets[press_time] = 0;
-      int base_key = at_time(notes, press_time);
-      auto key_bound = notes.lower_bound(press_time + press.length);
-      auto key_it = notes.upper_bound(press_time);
-      while (key_it != key_bound) {
-        const auto & [ key_time, key ] = *key_it;
-        double curr_off = at_time(offsets, key_time);
-        double dest_off = key - base_key;
-
-        ++key_it;
-        if (dest_off == curr_off) continue;
-
-        // available length for this note
-        int avail_note_length = press_time + press.length - key_time;
-        if (key_it != key_bound && key_it->first - key_time < avail_note_length)
-          avail_note_length = key_it->first - key_time;
-
-        constexpr int incr = 10;
-        portas.emplace(0, 0); // to avoid the case of no portamentos
-        auto porta_it = --portas.upper_bound(key_time);
-        auto porta_bound = portas.lower_bound(key_time + avail_note_length);
-        for (; porta_it != porta_bound; ++porta_it) {
-          // restrict porta_time for the for loop later down
-          int porta_time = std::max(porta_it->first, key_time);
-          int porta = porta_it->second;
-
-          // available length for this block of portamento in this note
-          auto next_porta = porta_it;
-          ++next_porta;
-          int avail_porta_length = avail_note_length;
-          if (next_porta != porta_bound &&
-              avail_porta_length > next_porta->first - key_time)
-            avail_porta_length = next_porta->first - key_time;
-
-          for (int i = porta_time - key_time;
-               i < std::min(avail_porta_length, porta); i += incr)
-            offsets[key_time + i] = lerp(curr_off, dest_off, i, porta);
-
-          // if this porta finished, don't start the next one.
-          if (porta + key_time <= avail_porta_length) {
-            offsets[key_time + porta] = dest_off;
-            break;
-          }
-        }
-
-        // porta_it is the first portamento that finished. if it's porta_bound,
-        // no portamento finished, in which case we calculate and the correct
-        // pitch offset for the end of this note.
-        if (porta_it == porta_bound && porta_it != portas.begin()) {
-          int porta = (--porta_bound)->second;
-          // porta is nonzero, or else it would've finished before the note end.
-          offsets[key_time + avail_note_length] =
-              lerp(curr_off, dest_off, avail_note_length, porta);
-        }
-      }
-    }
-
-    auto tuning_it = tunings.begin();
-    while (tuning_it != tunings.end()) {
-      const auto & [ tune_time, tuning ] = *tuning_it;
-      double current_offset = at_time(offsets, tune_time);
-      ++tuning_it;
-
-      auto offset_it = offsets.emplace(tune_time, current_offset).first;
-      while (
-          offset_it != offsets.end() &&
-          (tuning_it == tunings.end() || offset_it->first < tuning_it->first)) {
-        offset_it->second += tuning;
-        ++offset_it;
-      }
-    }
-    return offsets;
-  }
-};
 
 int main(int argc, char **args) {
   // read file
@@ -306,15 +142,18 @@ int main(int argc, char **args) {
     }
 
     for (const auto & [ time, press ] : units[i].presses) {
-      const Woice &woice = woices[at_time(units[i].voice, time)];
+      const Woice &woice = woices[units[i].voice.at_time(time)];
       int real_channel = (woice.drum ? 9 : channel);
-      int key = (woice.drum ? woice.num : at_time(units[i].notes, time));
+      int key = (woice.drum ? woice.num : units[i].notes.at_time(time));
       midifile.addNoteOn(track, time, real_channel, key,
                          std::min(press.vel, 127));
       midifile.addNoteOff(track, time + press.length, real_channel, key);
     }
 
-    for (const auto & [ time, offset ] : units[i].pitch_offsets()) {
+    Historical<double> pitch_offsets =
+        porta_pitch_offsets(units[i].presses, units[i].notes, units[i].portas);
+    add_pitch_offset(pitch_offsets, units[i].tunings);
+    for (const auto & [ time, offset ] : pitch_offsets) {
       int pitch_bend_range = (std::floor(std::abs(offset) / 4) + 1) * 4;
       double abs_offset = offset / pitch_bend_range;
       midifile.addController(track, time, channel, 6, pitch_bend_range);

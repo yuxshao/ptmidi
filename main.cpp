@@ -40,6 +40,7 @@ double lerp(double a, double b, int num, int denom) {
 }
 
 struct Woice {
+  Woice() : drum(false), num(0) {}
   bool drum;
   int num;
 };
@@ -195,7 +196,6 @@ int main(int argc, char **args) {
   std::vector<Woice> woices(pxtn.Woice_Num());
   for (int i = 0; i < pxtn.Woice_Num(); ++i) {
     const pxtnWoice *woice = pxtn.Woice_Get(i);
-    woices[i] = {0};
     if (woice->is_name_buf()) {
       string name(woice->get_name_buf(nullptr));
       // some naive string parsing to match (D|M)[0-9]+.*
@@ -283,7 +283,7 @@ int main(int argc, char **args) {
 
   for (int i = 0; i < pxtn.Unit_Num(); ++i) {
     int track = i + 1;
-    int channel = (i >= 10 ? i + 1 : i); // skip the drum channel
+    int channel = (i >= 9 ? i + 1 : i); // skip the drum channel
 
     const pxtnUnit &unit = *pxtn.Unit_Get(i);
     midifile.addTrackName(track, 0, unit.get_name_buf(nullptr));
@@ -302,16 +302,16 @@ int main(int argc, char **args) {
 
     for (const auto & [ time, voice ] : units[i].voice) {
       const Woice &woice = woices[voice];
-      if (woice.drum)
-        std::cerr << "drums not supported yet";
-      else
-        midifile.addPatchChange(track, time, channel, woice.num);
+      if (!woice.drum) midifile.addPatchChange(track, time, channel, woice.num);
     }
 
     for (const auto & [ time, press ] : units[i].presses) {
-      int key = at_time(units[i].notes, time);
-      midifile.addNoteOn(track, time, channel, key, std::min(press.vel, 127));
-      midifile.addNoteOff(track, time + press.length, channel, key);
+      const Woice &woice = woices[at_time(units[i].voice, time)];
+      int real_channel = (woice.drum ? 9 : channel);
+      int key = (woice.drum ? woice.num : at_time(units[i].notes, time));
+      midifile.addNoteOn(track, time, real_channel, key,
+                         std::min(press.vel, 127));
+      midifile.addNoteOff(track, time + press.length, real_channel, key);
     }
 
     for (const auto & [ time, offset ] : units[i].pitch_offsets()) {

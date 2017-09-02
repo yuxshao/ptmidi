@@ -2,8 +2,12 @@
 #define DATA_HPP
 
 #include <iostream>
+#include <vector>
 
 #include "historical.hpp"
+#include "pxtone/pxtnService.h"
+
+std::ostream &operator<<(std::ostream &o, const EVERECORD &p);
 
 struct Press {
   int vel, length;
@@ -15,6 +19,8 @@ struct Woice {
   Woice() : drum(false), num(0) {}
   bool drum;
   int num;
+
+  static std::vector<Woice> get_woices(const pxtnService &pxtn);
 };
 
 struct Unit {
@@ -31,6 +37,8 @@ struct Unit {
   Unit()
       : notes(48), portas(0), tunings(0), volume(104), voice(0), group(0),
         pan_v(64), pan_t(64){};
+
+  static std::vector<Unit> get_units(const pxtnService &pxtn);
 };
 
 #endif // DATA_HPP

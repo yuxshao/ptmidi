@@ -1,16 +1,16 @@
 #ifndef HISTORICAL_HPP
 #define HISTORICAL_HPP
 
-// A simple structure for keeping track of a time-varying quantity.
+// A structure that keeps track of a time-varying quantity (starting at time 0).
 #include <climits>
 #include <iostream>
 #include <map>
 
 template <typename T> class Historical : public std::map<int, T> {
 public:
-  Historical(T initial) : std::map<int, T>() {
-    std::map<int, T>::at(0) = initial;
-  }
+  // We (softly) enforce an initial value for easier file writing and pitch
+  // processing later.
+  Historical(T initial) : std::map<int, T>({{0, initial}}){};
 
   // Get the value of the quantity at the given time.
   T at_time(int time) const {

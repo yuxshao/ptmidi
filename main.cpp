@@ -3,9 +3,9 @@
 #include <iostream>
 
 #include "MidiFile.h"
-#include "pttypes.hpp"
 #include "historical.hpp"
 #include "pitch_bend.hpp"
+#include "pttypes.hpp"
 #include "pxtone/pxtnService.h"
 
 std::ostream &operator<<(std::ostream &o, const EVERECORD &p) {

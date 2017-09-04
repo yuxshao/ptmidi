@@ -1,0 +1,3 @@
+[submodule "midifile"]
+	path = midifile
+	url = git@github.com:craigsapp/midifile.git

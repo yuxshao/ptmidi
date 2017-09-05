@@ -4,7 +4,7 @@ This attempts to be a more complete `.ptcop` to `.mid` converter, using the not-
 
 ## Features
 
-* Portamentos and key corrects fully supported, using a lot of pitch bends and bend range adjustments.
+* Most unit properties like volume, panning, and portamento are fully supported (in the case of portamento and key correct, this was through a lot of pitch bend and bend range adjustments).
 * Associations between voices and MIDI programs through a voice naming scheme (see example for use).
   * If the voice name starts with an `M` and is followed by a number, that voice will correspond to that program number, 0-indexed.
   * If the voice name starts with a `D` and is followed by a number, that voice will correspond to the percussion sound with that note number, 0-indexed.

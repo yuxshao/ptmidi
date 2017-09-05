@@ -80,7 +80,7 @@ Historical<double> porta_pitch_offsets(const std::map<int, Press> &presses,
           offsets[key_time + i] = lerp(curr_off, dest_off, i, porta);
 
         // if this porta finished, don't start the next one.
-        if (porta + key_time <= avail_porta_length) {
+        if (porta <= avail_porta_length) {
           offsets[key_time + porta] = dest_off;
           break;
         }

@@ -36,6 +36,7 @@ int main(int argc, char **args) {
   if (!song_name) song_name = "";
   midifile.addTrackName(0, 0, song_name);
   midifile.addTempo(0, 0, pxtn.master->get_beat_tempo());
+  midifile.addTimeSignature(0, 0, pxtn.master->get_beat_num(), 4);
 
   for (int i = 0; i < pxtn.Unit_Num(); ++i) {
     int track = i + 1;

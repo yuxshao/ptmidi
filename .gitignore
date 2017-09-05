@@ -1,3 +1,5 @@
 *.mid
 *.ptcop
+*.o
+*.a
 main

@@ -19,4 +19,6 @@ This attempts to be a more complete `.ptcop` to `.mid` converter, using the not-
 
 ## Use
 
-On a system with make and gcc 7 or above, run `make` to build the `main` command line executable, then run `./main {YOUR-FILE}.ptcop` to generate `{YOUR-FILE}.ptcop.mid`.
+If on Windows, run `ptmidi.exe` and select the file to generate another file with `.mid` appended to it. The Visual Studio solution should also hopefully build.
+
+On other systems, if you have make and gcc 7 or above, run `make` to build the `ptmidi` command line executable, then run `./ptmidi {YOUR-FILE}.ptcop` to generate `{YOUR-FILE}.ptcop.mid`. The `ptmidi` binary might also work in lieu of building.

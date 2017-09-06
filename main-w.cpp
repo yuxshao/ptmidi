@@ -1,3 +1,4 @@
+#ifdef _WIN32
 
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -139,3 +140,5 @@ term:
 	SAFE_DELETE(pxtn);
 	return 1;
 }
+
+#endif // WIN32

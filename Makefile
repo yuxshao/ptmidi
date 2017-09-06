@@ -1,7 +1,7 @@
 .PHONY: all
 all: main
 
-main: *.cpp *.hpp midifile/lib/libmidifile.a pxtone/libpxtone.a
+main: convert.cpp main.cpp pitch_bend.cpp pttypes.cpp *.hpp midifile/lib/libmidifile.a pxtone/libpxtone.a
 	g++ -g -std=c++1z *.cpp -o main -L./pxtone -L./midifile/lib -lpxtone -lmidifile -I./midifile/include
 
 clean:

@@ -17,6 +17,6 @@ This attempts to be a more complete `.ptcop` to `.mid` converter, using the not-
 * All and only percussion sounds are played on channel 10. As a result, only note properties like length and velocity, not channel properties like volume, are kept.
 * Notes should not shift past an octave away from the key it started on, since the maximum pitch bend range is an octave.
 
-## Use
+## Installation/use
 
-On a system with make and gcc 7 or above, run `make` to build the `main` command line executable, then run `./main {YOUR-FILE}.ptcop` to generate `{YOUR-FILE}.ptcop.mid`.
+See [releases](https://github.com/yuxshao/ptmidi/releases). On a system with make and gcc 7 or above, run `make` to build the `main` command line executable, then run `./main {YOUR-FILE}.ptcop` to generate `{YOUR-FILE}.ptcop.mid`.
